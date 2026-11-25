@@ -6,7 +6,11 @@
 // The word is picked from a small curated shortlist scored on the judge's
 // own brief: surprise first, then vividness/specificity, then wit or sound.
 // The top scorer is written; the rest stay as documented also-rans.
-import { mkdirSync, writeFileSync } from "node:fs";
+//
+// Revision: added "snollygoster" to the shortlist — it outscores the old
+// winner on wit (545 vs 542) — and hardened validation with a round-trip
+// read-back of the written file.
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 type Candidate = {
@@ -46,6 +50,13 @@ const CANDIDATES: Candidate[] = [
     wit: 2,
     note: "The sound of wind moving through trees. Rare and lovely, but quiet where the judge wants a spark.",
   },
+  {
+    word: "snollygoster",
+    surprise: 5,
+    vividness: 4,
+    wit: 5,
+    note: "A shrewd, unprincipled person, especially a politician: rare, funny-sounding, and a jab with a target.",
+  },
 ];
 
 const FILLER = new Set([
@@ -78,6 +89,9 @@ function validate(word: string): void {
   if (FILLER.has(word.toLowerCase())) {
     throw new Error("entry must not be a generic filler word");
   }
+  if (!CANDIDATES.some((c) => c.word === word)) {
+    throw new Error("entry must be a word from the scored shortlist");
+  }
 }
 
 function main(): void {
@@ -86,6 +100,11 @@ function main(): void {
   const outPath = process.env.OUTPUT_PATH ?? "/output/entry.txt";
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, word, "utf8");
+  // Round-trip read-back: the file must read back exactly the picked word.
+  const back = readFileSync(outPath, "utf8");
+  if (back !== word) {
+    throw new Error("Write-back verification failed: entry.txt does not match the picked word.");
+  }
   console.log(`wrote ${word.length}-char entry to ${outPath}: ${word}`);
 }
 
